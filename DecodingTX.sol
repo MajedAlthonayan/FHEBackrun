@@ -19,7 +19,7 @@ contract TXDecoder {
 
     struct Data {
         bytes methodID;
-        euint64 amountIn;
+        uint64 amountIn;
         euint64 amountOutMin;
         euint64 addressOffset;
         eaddress dataTo;
@@ -33,7 +33,7 @@ contract TXDecoder {
         euint64 gasPrice;
         euint64 gasLimit;
         eaddress to;
-        euint64 value;
+        uint256 value;
         Data data;
     }
 
@@ -52,7 +52,7 @@ contract TXDecoder {
         euint64 gasPrice = TFHE.asEuint64(encodedTx.toRlpItem().toList()[1].toUint()); 
         euint64 gasLimit = TFHE.asEuint64(encodedTx.toRlpItem().toList()[2].toUint()); 
         eaddress to = TFHE.asEaddress(encodedTx.toRlpItem().toList()[3].toAddress()); 
-        euint64 value = TFHE.asEuint64(encodedTx.toRlpItem().toList()[4].toUint()); 
+        uint256 value = encodedTx.toRlpItem().toList()[4].toUint(); 
         Data memory decodedData;
         
         // DATA
@@ -69,7 +69,7 @@ contract TXDecoder {
             revert("Invalid Function");
         }
 
-        //Probably not needed !! 
+        // Probably not needed !! 
         // euint64 v = TFHE.asEuint64(encodedTx.toRlpItem().toList()[6].toUint()); 
         // euint64 r = TFHE.asEuint64(encodedTx.toRlpItem().toList()[7].toBytes());
         // euint64 s = TFHE.asEuint64(encodedTx.toRlpItem().toList()[8].toBytes());
@@ -106,7 +106,8 @@ contract TXDecoder {
         *
         */
     function decodeTokensForEth(bytes memory data) internal pure returns(Data memory){
-        euint64 amountIn = TFHE.asEuint64(abi.decode(extractBytes(data, 4, 32), (uint256))); 
+        // euint64 amountIn = TFHE.asEuint64(abi.decode(extractBytes(data, 4, 32), (uint256))); 
+        uint64 amountIn = abi.decode(extractBytes(data, 4, 32), (uint64)); 
         euint64 amountOutMin = TFHE.asEuint64(abi.decode(extractBytes(data, 36, 32), (uint256))); 
         euint64 addressOffset = TFHE.asEuint64(abi.decode(extractBytes(data, 68, 32), (uint256)));
         eaddress dataTo = TFHE.asEaddress(abi.decode(extractBytes(data, 100, 32), (address))); 
@@ -128,7 +129,7 @@ contract TXDecoder {
         */
     function decodeEthForTokens(bytes memory data) internal pure returns(Data memory){
         // self made
-        euint64 amountIn = TFHE.asEuint64(0);  
+        uint64 amountIn = uint64(0);
         euint64 amountOutMin = TFHE.asEuint64(abi.decode(extractBytes(data, 4, 32), (uint256))); 
         euint64 addressOffset = TFHE.asEuint64(abi.decode(extractBytes(data, 36, 32), (uint256)));
         eaddress dataTo = TFHE.asEaddress(abi.decode(extractBytes(data, 68, 32), (address))); 
