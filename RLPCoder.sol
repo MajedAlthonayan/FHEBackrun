@@ -53,7 +53,7 @@ contract RLPCoder {
         * @param {encodedTX} the RLP encoded transaction.
         * @return FHE Encrypted, RLP decoded transaction.
         *
-        */
+    */
     function decodeTX(bytes memory encodedTx) public pure returns(DecodedTX memory){ 
         uint256 nonce = encodedTx.toRlpItem().toList()[0].toUint(); 
         uint256 gasPrice = encodedTx.toRlpItem().toList()[1].toUint(); 
@@ -63,21 +63,20 @@ contract RLPCoder {
         Data memory decodedData;
 
 
-        // DATA
+        // Data
         bytes memory data = encodedTx.toRlpItem().toList()[5].toBytes();
         bytes memory methodID = extractBytes(data, 0, 4);
 
         if(uint8(methodID[0]) == 0x18){ 
-            //tokens for eth
+            // Tokens For Eth
             decodedData = decodeTokensForEth(data);
         }else if(uint8(methodID[0]) == 0x7f){
-            //eth for tokens
+            // Eth For Tokens
             decodedData = decodeEthForTokens(data);
         } else{
             revert("Invalid Function");
         }
         
-
 
         return (DecodedTX(nonce, gasPrice, gasLimit, toAddress, value, decodedData));
     }
@@ -90,7 +89,7 @@ contract RLPCoder {
         * @param {transaction} The decoded transaction containing the searcher's backrunning transaction.  
         * @return The RLP encoded, serialised transaction. 
         *
-        */
+    */
     function encodeTX(DecodedTX memory transaction) public view returns(bytes memory){ 
         bytes[] memory dataArray = new bytes[](9);
         bytes[] memory TxArray = new bytes[](6);
@@ -136,9 +135,9 @@ contract RLPCoder {
         * @param {len} The length of the slice. 
         * @return 
         *
-        */
+    */
     function extractBytes(bytes memory input, uint256 start, uint256 len) internal pure returns (bytes memory) {
-        require(start + len <= input.length, "Overflow!"); // Checks bounds
+        require(start + len <= input.length, "Overflow!"); // Check bounds
         bytes memory result = new bytes(len);
         for (uint256 i = 0; i < len; i++) {
             result[i] = input[start + i];
@@ -154,7 +153,7 @@ contract RLPCoder {
         * @param {data} the data field of the transaction.
         * @return The data struct containing the parameters included in the data fields. 
         *
-        */
+    */
     function decodeTokensForEth(bytes memory data) internal  pure returns(Data memory){
         euint64 amountIn = TFHE.asEuint64(abi.decode(extractBytes(data, 4, 32), (uint64))); 
         euint64 amountOutMin = TFHE.asEuint64(abi.decode(extractBytes(data, 36, 32), (uint256))); 
@@ -175,7 +174,7 @@ contract RLPCoder {
         * @param {data} the data field of the transaction.
         * @return The data struct containing the parameters included in the data fields. 
         *
-        */
+    */
     function decodeEthForTokens(bytes memory data) internal pure returns(Data memory){
         euint64 amountIn = TFHE.asEuint64(uint64(0));
         euint64 amountOutMin = TFHE.asEuint64(abi.decode(extractBytes(data, 4, 32), (uint256))); 

@@ -3,11 +3,15 @@ pragma solidity ^0.8.24;
 
 
 import "./RLPCoder.sol";
+// import "./lib/TFHE.sol";
 import "./Main.sol";
 
 
 contract Backrun {
 
+    event debug(string, euint64);
+    event debug2(string, uint256);
+    event debugBytes(string, bytes);
     /*
         * 
         * @dev This function updates the quantities of the pool based on the trade that was peformed by the user. 
@@ -18,27 +22,35 @@ contract Backrun {
         * @return {searcherMethodID} The method ID of the uniswapV2 method that is to be used by the searcher. 
         *
     */
-    function updateTokenQuantities(RLPCoder.DecodedTX memory decodedTransaction, Main.ProfitConstants memory constants) public view returns (euint64 X, euint64 Y, bytes memory searcherMethodID){
+    function updateTokenQuantities(RLPCoder.DecodedTX memory decodedTransaction, Main.ProfitConstants memory searcherConstants) public view returns (euint64, euint64, bytes memory){
+        bytes memory searchersMethodID;
+        euint64 token1;
+        euint64 token2 ;
+
         if (decodedTransaction.data.methodID[0] == 0x18){ 
-            //tokens for ETH  
-            searcherMethodID = "0x7ff36ab5";
+            // Tokens For ETH  
+            // TODO to match else statement 
+            searchersMethodID = hex"7ff36ab5";
             euint64 uniswapFees = TFHE.div(TFHE.mul(decodedTransaction.data.amountIn, 3), 1000);
             euint64 amountIn_fees = TFHE.sub(decodedTransaction.data.amountIn, uniswapFees); // how much USDT was actually traded in
-            euint64 token1AfterSwap = TFHE.add(constants.USDTInPool, amountIn_fees);
-            euint64 token2AfterSwap = TFHE.mul(constants.EthInPool, constants.USDTInPool); 
-            X = TFHE.div(token2AfterSwap, TFHE.decrypt(token1AfterSwap)); // amount of ETH after swap 
-            Y = TFHE.mul(TFHE.add(constants.USDTInPool, decodedTransaction.data.amountIn), constants.EthPrecision); // USDT after swap 
+            euint64 token1AfterSwap = TFHE.add(searcherConstants.USDTInPool, amountIn_fees);
+            euint64 token2AfterSwap = TFHE.mul(searcherConstants.EthInPool, searcherConstants.USDTInPool); 
+            token1 = TFHE.div(token2AfterSwap, TFHE.decrypt(token1AfterSwap)); // amount of ETH after swap 
+            token2 = TFHE.mul(TFHE.add(searcherConstants.USDTInPool, decodedTransaction.data.amountIn), searcherConstants.EthPrecision); // USDT after swap 
         } else{ 
-            // eth for tokens 
-            searcherMethodID = "0x18cbafe5";
-            euint64 uniswapFees = TFHE.div(TFHE.mul(decodedTransaction.value, 3), 1000);
-            euint64 amountIn_fees = TFHE.sub(decodedTransaction.value, uniswapFees); // how much USDT was actually traded in
-            euint64 token1AfterSwap = TFHE.add(constants.EthInPool, amountIn_fees);
-            euint64 token2AfterSwap = TFHE.mul(constants.EthInPool, constants.USDTInPool);
-            Y = TFHE.add(constants.EthInPool, decodedTransaction.value); // eth after swap
-            X = TFHE.mul(TFHE.div(token2AfterSwap, TFHE.decrypt(token1AfterSwap)), constants.EthPrecision);  // amount of usdt after swap 
+            // Eth For Tokens 
+            searchersMethodID = hex"18cbafe5";
+            euint64 newValue = TFHE.div(decodedTransaction.value, 1000000000000);
+            euint64 uniswapFees = TFHE.div(TFHE.mul(newValue, 3), 1000);
+            euint64 amountIn_fees = TFHE.sub(newValue, uniswapFees); // how much USDT was actually traded in
+            euint64 token1AfterSwap = TFHE.add(searcherConstants.EthInPool, amountIn_fees);
+            token2 = TFHE.add(searcherConstants.EthInPool, newValue); // eth after swap
+            euint64 newEthInPool = TFHE.mul(searcherConstants.EthInPool, 1000000); // x 1000000 to help with int division
+            token1 = TFHE.div(newEthInPool,TFHE.decrypt(token1AfterSwap)); // usdt after swap
+            token1 = TFHE.div(TFHE.mul(token1, searcherConstants.USDTInPool), 1000000); // undoing earlier multiplication
+            
         }
-        return (X, Y, searcherMethodID);
+        return (token1, token2, searchersMethodID);
     }
 
     /*
@@ -50,13 +62,12 @@ contract Backrun {
         * @return {eamountIn} The optimal amount to trade in.
         *
     */
-    function amountCalculation(Main.ProfitConstants memory constants, euint64 X, euint64 Y) public view returns(euint64 eamountIn){
-        // enc version 
-        euint64 evar = TFHE.sub(TFHE.mul(TFHE.mul(constants.encryptedFour, constants.maxBuyPrice), Y), TFHE.div(TFHE.mul(12, TFHE.mul(constants.maxBuyPrice, Y)), 1000));
+    function amountCalculation(Main.ProfitConstants memory searcherConstants, euint64 X, euint64 Y) public view returns(euint64 eamountIn){
+        euint64 evar = TFHE.sub(TFHE.mul(TFHE.mul(searcherConstants.encryptedFour, searcherConstants.maxBuyPrice), Y), TFHE.div(TFHE.mul(12, TFHE.mul(searcherConstants.maxBuyPrice, Y)), 1000));
         euint64 evar2 = TFHE.mul(X, TFHE.add(TFHE.div(TFHE.mul(9,X), 1000000), evar));
         euint64 eamountDividend = TFHE.sub(TFHE.add(esqrt(evar2), TFHE.div(TFHE.mul(X, 3), 1000)) , TFHE.mul(2, X));
-        uint64 amountDivisor = (2 * constants.EthPrecision) - ((6*constants.EthPrecision) / 1000); 
-        eamountIn = TFHE.div(eamountDividend , amountDivisor); 
+        eamountIn = TFHE.div(eamountDividend , 1000); 
+        eamountIn = TFHE.mul(eamountDividend , 1994); 
         return eamountIn;
     }
 
@@ -71,20 +82,21 @@ contract Backrun {
         * @return {profit} The profit resulting from the trade. 
         *
     */
-    function calculateProfits(RLPCoder.DecodedTX memory decodedTransaction, euint64 X, euint64 Y, euint64 eamountIn, Main.ProfitConstants memory constants) public view returns(euint64 profit, euint64){
-        //enc version
+    function calculateProfits(RLPCoder.DecodedTX memory decodedTransaction, euint64 X, euint64 Y, euint64 eamountIn, Main.ProfitConstants memory searcherConstants) public view returns(euint64 profit, euint64){
         euint64 x_after_fee;
         euint64 y_after;
         if (decodedTransaction.data.methodID[0] == 0x18){ 
-            Y = TFHE.div(Y, constants.EthPrecision);
+            // TODO: 
+            // Y = TFHE.div(Y, searcherConstants.EthPrecision);
             x_after_fee = TFHE.sub(TFHE.add(X, eamountIn) ,TFHE.div(TFHE.mul(eamountIn, 3), 1000));
             y_after = TFHE.div(TFHE.mul(X,Y), TFHE.decrypt(x_after_fee));
-            profit = TFHE.mul(TFHE.sub(constants.minSellPrice, constants.maxBuyPrice), TFHE.sub(Y, y_after));
+            profit = TFHE.mul(TFHE.sub(searcherConstants.minSellPrice, searcherConstants.maxBuyPrice), TFHE.sub(Y, y_after));
         }else{
-            X = TFHE.div(X, constants.EthPrecision);
+            // X = TFHE.div(X, searcherConstants.EthPrecision);
             x_after_fee = TFHE.sub(TFHE.add(X, eamountIn) ,TFHE.div(TFHE.mul(eamountIn, 3), 1000));
-            y_after = TFHE.div(TFHE.mul(X,Y), TFHE.decrypt(x_after_fee));
-            profit = TFHE.div(TFHE.mul(TFHE.sub(constants.minSellPrice, constants.maxBuyPrice), TFHE.sub(Y, y_after)), constants.EthPrecision);
+            uint64 xx =  TFHE.decrypt(x_after_fee);
+            y_after = TFHE.div(TFHE.mul(X,Y), xx);
+            profit = TFHE.mul(TFHE.sub(searcherConstants.minSellPrice, searcherConstants.maxBuyPrice), TFHE.sub(Y, y_after));
         }
         return (profit, TFHE.sub(Y, y_after)); 
     }
@@ -99,7 +111,7 @@ contract Backrun {
     function esqrt(euint64 a) public view returns (euint64) {
         unchecked {
             uint256 b = TFHE.decrypt(a);
-            // Take care of easy edge cases when a == 0 or a == 1
+
             if (b <= 1) {
                 return TFHE.asEuint64(b);
             }
@@ -115,14 +127,14 @@ contract Backrun {
             if (aa >= (1 << 4)) {aa >>= 4; xn <<= 2;}
             if (aa >= (1 << 2)) {xn <<= 1;}
 
-            xn = (3 * xn) >> 1; // ε_0 := | x_0 - sqrt(a) | ≤ 2**(e-2)
+            xn = (3 * xn) >> 1; 
  
-            xn = (xn + b / xn) >> 1; // ε_1 := | x_1 - sqrt(a) | ≤ 2**(e-4.5)  -- special case, see above
-            xn = (xn + b / xn) >> 1; // ε_2 := | x_2 - sqrt(a) | ≤ 2**(e-9)    -- general case with k = 4.5
-            xn = (xn + b / xn) >> 1; // ε_3 := | x_3 - sqrt(a) | ≤ 2**(e-18)   -- general case with k = 9
-            xn = (xn + b / xn) >> 1; // ε_4 := | x_4 - sqrt(a) | ≤ 2**(e-36)   -- general case with k = 18
-            xn = (xn + b / xn) >> 1; // ε_5 := | x_5 - sqrt(a) | ≤ 2**(e-72)   -- general case with k = 36
-            xn = (xn + b / xn) >> 1; // ε_6 := | x_6 - sqrt(a) | ≤ 2**(e-144)  -- general case with k = 72
+            xn = (xn + b / xn) >> 1;
+            xn = (xn + b / xn) >> 1; 
+            xn = (xn + b / xn) >> 1; 
+            xn = (xn + b / xn) >> 1; 
+            xn = (xn + b / xn) >> 1; 
+            xn = (xn + b / xn) >> 1; 
 
             uint256 finally = xn - toUint(xn > b / xn);
             return TFHE.asEuint64(finally);
