@@ -5,22 +5,18 @@ import "./lib/TFHE.sol";
 import "solidity-rlp/contracts/RLPReader.sol";
 
 contract MultipleTX {
-    // RLPCoder internal RLP;
 
     uint256 maxRatio = 0 ;
-    // euint64 maxIndex = TFHE.asEuint64(100); 
-    uint256 maxIndex = 0;
-    uint256 newEth;
-    uint256 newUSDT;
-    uint256 amountIn;
+    uint256 maxIndex = 100;
+    uint256 newEthReserves;
+    uint256 newUSDTReserves;
+    euint64 amountIn;
     bytes methodID;
-    uint256 targetAmountIn;
+    euint64 targetAmountIn;
     bytes targetMethodID;
     using RLPReader for RLPReader.RLPItem;
     using RLPReader for bytes;
 
-    event debugBytes(string, bytes);
-    event debugUint(string, uint256);
 
     /*
         * 
@@ -46,12 +42,11 @@ contract MultipleTX {
 
         for(uint i = 0; i < 4 ; i++){
             // For all potential target transactions 
-
             (targetAmountIn, targetMethodID) = getAmountIn(txs[i]);
 
             // reset reserves
-            newEth  = EthInPool;
-            newUSDT = USDTInPool;
+            newEthReserves  = (EthInPool);
+            newUSDTReserves = (USDTInPool);
             
             // reset amounts traded in
             uint256 ethSum = 0;
@@ -67,26 +62,27 @@ contract MultipleTX {
 
                     if(methodID[0] == 0x18){
                         // tokens for Eth
-                        usdtSum = (usdtSum + amountIn);
+                        usdtSum = (usdtSum + TFHE.decrypt(amountIn));
                     }else{
                         //ETH for tokens
-                        ethSum = (ethSum + (amountIn / 1000000000000));
+                        ethSum = (ethSum + (TFHE.decrypt(amountIn) / 1000000000000));
                     }
                 }
             }
-
             // calculate reserves 
-            (newEth, newUSDT) = updateEthTrade(newEth, newUSDT, ethSum); // ~ 4 million
-            (newEth, newUSDT) = updateUsdtTrade(newEth, newUSDT, usdtSum); // ~ 4 million
+            (newEthReserves, newUSDTReserves) = updateEthTrade(newEthReserves, newUSDTReserves, ethSum);  
+            (newEthReserves, newUSDTReserves) = updateUsdtTrade(newEthReserves, newUSDTReserves, usdtSum); 
 
 
             // calculate ratios 
             if(targetMethodID[0] == 0x18){
                 // Tokens For Eth
-                ratio = (targetAmountIn * 1000000) / newUSDT;
+                ratio = (uint256(TFHE.decrypt(targetAmountIn)) * 1000000) / newUSDTReserves;
+
             }else{
                 // Eth For Tokens
-                ratio = (targetAmountIn / 1000000) / newEth;
+                ratio = (TFHE.decrypt(targetAmountIn) / 1000000) / newEthReserves;
+
             }
 
             if(ratio > maxRatio){
@@ -94,12 +90,19 @@ contract MultipleTX {
                 maxIndex = i;
             }
         }
-        
-
-        return (txs[maxIndex], newEth, newUSDT); 
-
+        return (txs[maxIndex], newEthReserves, newUSDTReserves); 
     }
 
+    /**
+        * 
+        * @dev Updates the reserves based on Eth traded in
+        * 
+        * @param {eth} The original Eth reserves.
+        * @param {usdt} The original USDT reserves.
+        * @param {amount} Amount of Eth Traded in.
+        * @return The updated reserves.
+        *
+    */
     function updateEthTrade(uint256 eth, uint256 usdt, uint256 amount) internal pure returns(uint256, uint256){
         uint256 k = eth * usdt;
         uint256 updatedEth = eth + amount;
@@ -107,11 +110,21 @@ contract MultipleTX {
         return (updatedEth, updatedUSDT);
     }
 
+    /**
+        * 
+        * @dev Updates the reserves based on USDT traded in
+        * 
+        * @param {eth} The original Eth reserves.
+        * @param {usdt} The original USDT reserves.
+        * @param {amount} Amount of USDT Traded in.
+        * @return The updated reserves.
+        *
+    */
     function updateUsdtTrade(uint256 eth, uint256 usdt, uint256 amount) internal pure returns(uint256, uint256){
         uint256 k = eth * usdt;
         uint256 updatedUSDT = usdt + amount;
         uint256 updatedEth = k / updatedUSDT;
-        return(updatedEth, updatedUSDT);
+        return (updatedEth, updatedUSDT);
     }
 
     /**
@@ -123,18 +136,18 @@ contract MultipleTX {
         * @return The amount traded as well as the methodID
         *
     */
-    function getAmountIn(bytes memory encodedTx) internal pure returns(uint256, bytes memory){ 
+    function getAmountIn(bytes memory encodedTx) internal pure returns(euint64, bytes memory){ 
 
-        uint256 xamountIn;
+        euint64 xamountIn;
         bytes memory data = encodedTx.toRlpItem().toList()[5].toBytes();
         bytes memory xmethodID = extractBytes(data, 0, 4);
 
         if(uint8(xmethodID[0]) == 0x18){ 
             // Tokens For Eth
-            xamountIn = abi.decode(extractBytes(data, 4, 32), (uint64));
+            xamountIn = TFHE.asEuint64(abi.decode(extractBytes(data, 4, 32), (uint64)));
         }else if(uint8(xmethodID[0]) == 0x7f){
             // Eth For Tokens
-            xamountIn = encodedTx.toRlpItem().toList()[4].toUint(); 
+            xamountIn = TFHE.asEuint64(encodedTx.toRlpItem().toList()[4].toUint()); 
         } else{
             revert("Invalid Function");
         }
