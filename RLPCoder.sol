@@ -62,7 +62,6 @@ contract RLPCoder {
         euint64 value = TFHE.asEuint64(encodedTx.toRlpItem().toList()[4].toUint()); 
         Data memory decodedData;
 
-
         // Data
         bytes memory data = encodedTx.toRlpItem().toList()[5].toBytes();
         bytes memory methodID = extractBytes(data, 0, 4);
@@ -154,8 +153,8 @@ contract RLPCoder {
         * @return The data struct containing the parameters included in the data fields. 
         *
     */
-    function decodeTokensForEth(bytes memory data) internal  pure returns(Data memory){
-        euint64 amountIn = TFHE.asEuint64(abi.decode(extractBytes(data, 4, 32), (uint64))); 
+    function decodeTokensForEth(bytes memory data) internal pure returns(Data memory){
+        euint64 amountIn = TFHE.asEuint64(abi.decode(extractBytes(data, 4, 32), (uint64)));
         euint64 amountOutMin = TFHE.asEuint64(abi.decode(extractBytes(data, 36, 32), (uint256))); 
         uint256 addressOffset = abi.decode(extractBytes(data, 68, 32), (uint256));
         address dataTo = abi.decode(extractBytes(data, 100, 32), (address)); 

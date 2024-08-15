@@ -4,7 +4,7 @@ pragma solidity ^0.8.24;
 import "./lib/TFHE.sol";
 import "solidity-rlp/contracts/RLPReader.sol";
 
-contract MultipleTX {
+contract MultipleTx {
 
     uint256 maxRatio = 0 ;
     uint256 maxIndex = 100;

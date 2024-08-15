@@ -22,33 +22,32 @@ contract Backrun {
         * @return {searcherMethodID} The method ID of the uniswapV2 method that is to be used by the searcher. 
         *
     */
-    function updateTokenQuantities(RLPCoder.DecodedTX memory decodedTransaction, Main.ProfitConstants memory searcherConstants) public view returns (euint64, euint64, bytes memory){
+    function updateTokenQuantities(euint64 amountIn, euint64 value, bytes memory methodID, euint64 EthInPool, euint64 USDTInPool) public view returns (euint64, euint64, bytes memory){
         bytes memory searchersMethodID;
         euint64 token1;
         euint64 token2 ;
 
-        if (decodedTransaction.data.methodID[0] == 0x18){ 
+        if (methodID[0] == 0x18){ 
             // Tokens For ETH  
-            // TODO to match else statement 
             searchersMethodID = hex"7ff36ab5";
-            euint64 uniswapFees = TFHE.div(TFHE.mul(decodedTransaction.data.amountIn, 3), 1000);
-            euint64 amountIn_fees = TFHE.sub(decodedTransaction.data.amountIn, uniswapFees); // how much USDT was actually traded in
-            euint64 token1AfterSwap = TFHE.add(searcherConstants.USDTInPool, amountIn_fees);
-            euint64 token2AfterSwap = TFHE.mul(searcherConstants.EthInPool, searcherConstants.USDTInPool); 
-            token1 = TFHE.div(token2AfterSwap, TFHE.decrypt(token1AfterSwap)); // amount of ETH after swap 
-            token2 = TFHE.mul(TFHE.add(searcherConstants.USDTInPool, decodedTransaction.data.amountIn), searcherConstants.EthPrecision); // USDT after swap 
+            euint64 uniswapFees = TFHE.div(TFHE.mul(amountIn, 3), 1000);
+            euint64 amountIn_fees = TFHE.sub(amountIn, uniswapFees); // how much USDT was actually traded in
+            euint64 token1AfterSwap = TFHE.add(USDTInPool, amountIn_fees);
+            token2 = TFHE.add(USDTInPool, amountIn); // USDT after swap 
+            euint64 newEthInPool = TFHE.mul(EthInPool, 1000000);
+            token1 = TFHE.div(newEthInPool, TFHE.decrypt(token1AfterSwap)); // eth after swap
+            token1 = TFHE.div(TFHE.mul(token1, USDTInPool), 1000000); // undoing earlier multiplication
         } else{ 
             // Eth For Tokens 
             searchersMethodID = hex"18cbafe5";
-            euint64 newValue = TFHE.div(decodedTransaction.value, 1000000000000);
+            euint64 newValue = TFHE.div(value, 1000000000000);
             euint64 uniswapFees = TFHE.div(TFHE.mul(newValue, 3), 1000);
             euint64 amountIn_fees = TFHE.sub(newValue, uniswapFees); // how much USDT was actually traded in
-            euint64 token1AfterSwap = TFHE.add(searcherConstants.EthInPool, amountIn_fees);
-            token2 = TFHE.add(searcherConstants.EthInPool, newValue); // eth after swap
-            euint64 newEthInPool = TFHE.mul(searcherConstants.EthInPool, 1000000); // x 1000000 to help with int division
+            euint64 token1AfterSwap = TFHE.add(EthInPool, amountIn_fees);
+            token2 = TFHE.add(EthInPool, newValue); // eth after swap
+            euint64 newEthInPool = TFHE.mul(EthInPool, 1000000); // x 1000000 to help with int division
             token1 = TFHE.div(newEthInPool,TFHE.decrypt(token1AfterSwap)); // usdt after swap
-            token1 = TFHE.div(TFHE.mul(token1, searcherConstants.USDTInPool), 1000000); // undoing earlier multiplication
-            
+            token1 = TFHE.div(TFHE.mul(token1, USDTInPool), 1000000); // undoing earlier multiplication   
         }
         return (token1, token2, searchersMethodID);
     }
@@ -86,10 +85,10 @@ contract Backrun {
         euint64 x_after_fee;
         euint64 y_after;
         if (decodedTransaction.data.methodID[0] == 0x18){ 
-            // TODO: 
             // Y = TFHE.div(Y, searcherConstants.EthPrecision);
             x_after_fee = TFHE.sub(TFHE.add(X, eamountIn) ,TFHE.div(TFHE.mul(eamountIn, 3), 1000));
-            y_after = TFHE.div(TFHE.mul(X,Y), TFHE.decrypt(x_after_fee));
+            uint64 xx =  TFHE.decrypt(x_after_fee);
+            y_after = TFHE.div(TFHE.mul(X,Y), xx);
             profit = TFHE.mul(TFHE.sub(searcherConstants.minSellPrice, searcherConstants.maxBuyPrice), TFHE.sub(Y, y_after));
         }else{
             // X = TFHE.div(X, searcherConstants.EthPrecision);
