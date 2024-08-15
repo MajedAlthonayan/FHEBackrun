@@ -48,6 +48,7 @@ contract MultipleTX {
             // For all potential target transactions 
 
             (targetAmountIn, targetMethodID) = getAmountIn(txs[i]);
+
             // reset reserves
             newEth  = EthInPool;
             newUSDT = USDTInPool;
@@ -63,15 +64,17 @@ contract MultipleTX {
                 // get sum of all amounts traded in
                 if(j != i){
                     (amountIn, methodID) = getAmountIn(txs[j]);
+
                     if(methodID[0] == 0x18){
                         // tokens for Eth
                         usdtSum = (usdtSum + amountIn);
                     }else{
                         //ETH for tokens
-                        ethSum = (ethSum + amountIn);
+                        ethSum = (ethSum + (amountIn / 1000000000000));
                     }
                 }
             }
+
             // calculate reserves 
             (newEth, newUSDT) = updateEthTrade(newEth, newUSDT, ethSum); // ~ 4 million
             (newEth, newUSDT) = updateUsdtTrade(newEth, newUSDT, usdtSum); // ~ 4 million
@@ -80,10 +83,10 @@ contract MultipleTX {
             // calculate ratios 
             if(targetMethodID[0] == 0x18){
                 // Tokens For Eth
-                ratio = targetAmountIn / newUSDT;
+                ratio = (targetAmountIn * 1000000) / newUSDT;
             }else{
                 // Eth For Tokens
-                ratio = (targetAmountIn) / newEth;
+                ratio = (targetAmountIn / 1000000) / newEth;
             }
 
             if(ratio > maxRatio){
@@ -91,6 +94,7 @@ contract MultipleTX {
                 maxIndex = i;
             }
         }
+        
 
         return (txs[maxIndex], newEth, newUSDT); 
 
