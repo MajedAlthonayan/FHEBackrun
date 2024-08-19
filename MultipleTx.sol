@@ -6,10 +6,10 @@ import "solidity-rlp/contracts/RLPReader.sol";
 
 contract MultipleTx {
 
-    uint256 maxRatio = 0 ;
+    uint256 maxRatio;
     uint256 maxIndex = 100;
-    uint256 maxEth = 0;
-    uint256 maxUSDT = 0;
+    uint256 maxEth;
+    uint256 maxUSDT;
     uint256 newEthReserves;
     uint256 newUSDTReserves;
     euint64 amountIn;
@@ -42,7 +42,7 @@ contract MultipleTx {
         txs[2] = userTransaction3;
         txs[3] = userTransaction4;
 
-        for(uint i = 0; i < 4 ; i++){
+        for(uint i; i < 4 ; i++){
             // For all potential target transactions 
             (targetAmountIn, targetMethodID) = getAmountIn(txs[i]);
 
@@ -51,13 +51,13 @@ contract MultipleTx {
             newUSDTReserves = (USDTInPool);
             
             // reset amounts traded in
-            uint256 ethSum = 0;
-            uint256 usdtSum = 0;
+            uint256 ethSum;
+            uint256 usdtSum;
 
             // reset ratio
-            uint256 ratio = 0;
+            uint256 ratio;
 
-            for(uint j = 0; j < 4; j++){ 
+            for(uint j; j < 4; j++){ 
                 // get sum of all amounts traded in
                 if(j != i){
                     (amountIn, methodID) = getAmountIn(txs[j]);

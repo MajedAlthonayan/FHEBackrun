@@ -138,7 +138,7 @@ contract RLPCoder {
     function extractBytes(bytes memory input, uint256 start, uint256 len) internal pure returns (bytes memory) {
         require(start + len <= input.length, "Overflow!"); // Check bounds
         bytes memory result = new bytes(len);
-        for (uint256 i = 0; i < len; i++) {
+        for (uint256 i; i < len; i++) {
             result[i] = input[start + i];
         }
         return result;

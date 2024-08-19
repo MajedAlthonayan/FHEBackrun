@@ -9,9 +9,6 @@ import "./Main.sol";
 
 contract Backrun {
 
-    event debug(string, euint64);
-    event debug2(string, uint256);
-    event debugBytes(string, bytes);
     /*
         * 
         * @dev This function updates the quantities of the pool based on the trade that was peformed by the user. 

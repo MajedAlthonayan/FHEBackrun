@@ -36,8 +36,6 @@ contract Main{
     uint256 updatedEth;
     uint256 updatedUSDT;
 
-    event debugBytes(string, bytes);
-    event debugUint(string, uint256);
 
     /**
         * 
@@ -160,7 +158,7 @@ contract Main{
             finalData = RLPCoder.Data('0', searcherConstants.encryptedZero, searcherConstants.encryptedZero, 0 ,0x0000000000000000000000000000000000000000, 0, 0, 0x0000000000000000000000000000000000000000, 0x0000000000000000000000000000000000000000);
             finalTransaction = RLPCoder.DecodedTX(0, 0, 0, 0x0000000000000000000000000000000000000000, searcherConstants.encryptedZero, finalData);
         }
-        emit debugBytes("Final TX", RLP.encodeTX(finalTransaction));
+
         return (RLP.encodeTX(finalTransaction));
     }
 }
