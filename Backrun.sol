@@ -34,9 +34,9 @@ contract Backrun {
             euint64 amountIn_fees = TFHE.sub(amountIn, uniswapFees); // how much USDT was actually traded in
             euint64 token1AfterSwap = TFHE.add(USDTInPool, amountIn_fees);
             token2 = TFHE.add(USDTInPool, amountIn); // USDT after swap 
-            euint64 newEthInPool = TFHE.mul(EthInPool, 1000000);
+            euint64 newEthInPool = TFHE.mul(EthInPool, 100000000);
             token1 = TFHE.div(newEthInPool, TFHE.decrypt(token1AfterSwap)); // eth after swap
-            token1 = TFHE.div(TFHE.mul(token1, USDTInPool), 1000000); // undoing earlier multiplication
+            token1 = TFHE.div(TFHE.mul(token1, USDTInPool), 100000000); // undoing earlier multiplication
         } else{ 
             // Eth For Tokens 
             searchersMethodID = hex"18cbafe5";
@@ -45,9 +45,9 @@ contract Backrun {
             euint64 amountIn_fees = TFHE.sub(newValue, uniswapFees); // how much USDT was actually traded in
             euint64 token1AfterSwap = TFHE.add(EthInPool, amountIn_fees);
             token2 = TFHE.add(EthInPool, newValue); // eth after swap
-            euint64 newEthInPool = TFHE.mul(EthInPool, 1000000); // x 1000000 to help with int division
+            euint64 newEthInPool = TFHE.mul(EthInPool, 100000000); // x 1000000 to help with int division
             token1 = TFHE.div(newEthInPool,TFHE.decrypt(token1AfterSwap)); // usdt after swap
-            token1 = TFHE.div(TFHE.mul(token1, USDTInPool), 1000000); // undoing earlier multiplication   
+            token1 = TFHE.div(TFHE.mul(token1, USDTInPool), 100000000); // undoing earlier multiplication   
         }
         return (token1, token2, searchersMethodID);
     }
@@ -65,8 +65,8 @@ contract Backrun {
         euint64 evar = TFHE.sub(TFHE.mul(TFHE.mul(searcherConstants.encryptedFour, searcherConstants.maxBuyPrice), Y), TFHE.div(TFHE.mul(12, TFHE.mul(searcherConstants.maxBuyPrice, Y)), 1000));
         euint64 evar2 = TFHE.mul(X, TFHE.add(TFHE.div(TFHE.mul(9,X), 1000000), evar));
         euint64 eamountDividend = TFHE.sub(TFHE.add(esqrt(evar2), TFHE.div(TFHE.mul(X, 3), 1000)) , TFHE.mul(2, X));
-        eamountIn = TFHE.div(eamountDividend , 1000); 
-        eamountIn = TFHE.mul(eamountDividend , 1994); 
+        eamountIn = TFHE.div(eamountDividend , 1000); // divisor calculation
+        eamountIn = TFHE.mul(eamountDividend , 1994); // divisor calculation
         return eamountIn;
     }
 
@@ -86,18 +86,21 @@ contract Backrun {
         euint64 y_after;
         if (decodedTransaction.data.methodID[0] == 0x18){ 
             // Y = TFHE.div(Y, searcherConstants.EthPrecision);
-            x_after_fee = TFHE.sub(TFHE.add(X, eamountIn) ,TFHE.div(TFHE.mul(eamountIn, 3), 1000));
+            x_after_fee = TFHE.sub(TFHE.add(X, eamountIn) ,TFHE.div(TFHE.mul(eamountIn, 3), 1000)); // searcher trades in Eth
             uint64 xx =  TFHE.decrypt(x_after_fee);
-            y_after = TFHE.div(TFHE.mul(X,Y), xx);
+            y_after = TFHE.div(TFHE.mul(X,Y), xx); // USDT after
+            // y - y_after = received usdt
             profit = TFHE.mul(TFHE.sub(searcherConstants.minSellPrice, searcherConstants.maxBuyPrice), TFHE.sub(Y, y_after));
+            return(profit, TFHE.sub(Y, y_after));
         }else{
             // X = TFHE.div(X, searcherConstants.EthPrecision);
-            x_after_fee = TFHE.sub(TFHE.add(X, eamountIn) ,TFHE.div(TFHE.mul(eamountIn, 3), 1000));
-            uint64 xx =  TFHE.decrypt(x_after_fee);
-            y_after = TFHE.div(TFHE.mul(X,Y), xx);
-            profit = TFHE.mul(TFHE.sub(searcherConstants.minSellPrice, searcherConstants.maxBuyPrice), TFHE.sub(Y, y_after));
+            y_after = TFHE.sub(TFHE.add(Y, eamountIn) ,TFHE.div(TFHE.mul(eamountIn, 3), 1000)); // searcher trades in USDT
+            uint64 xx =  TFHE.decrypt(y_after);
+            x_after_fee = TFHE.div(TFHE.mul(X,Y), xx); // ETH after
+            // x - x_after_fee = received eth
+            profit = TFHE.mul(TFHE.sub(searcherConstants.minSellPrice, searcherConstants.maxBuyPrice), TFHE.sub(X, x_after_fee));
+            return(profit, TFHE.sub(X, x_after_fee));
         }
-        return (profit, TFHE.sub(Y, y_after)); 
     }
 
     /*

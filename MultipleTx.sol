@@ -8,6 +8,8 @@ contract MultipleTx {
 
     uint256 maxRatio = 0 ;
     uint256 maxIndex = 100;
+    uint256 maxEth = 0;
+    uint256 maxUSDT = 0;
     uint256 newEthReserves;
     uint256 newUSDTReserves;
     euint64 amountIn;
@@ -59,7 +61,6 @@ contract MultipleTx {
                 // get sum of all amounts traded in
                 if(j != i){
                     (amountIn, methodID) = getAmountIn(txs[j]);
-
                     if(methodID[0] == 0x18){
                         // tokens for Eth
                         usdtSum = (usdtSum + TFHE.decrypt(amountIn));
@@ -88,9 +89,11 @@ contract MultipleTx {
             if(ratio > maxRatio){
                 maxRatio = ratio;
                 maxIndex = i;
+                maxEth = newEthReserves;
+                maxUSDT = newUSDTReserves;
             }
         }
-        return (txs[maxIndex], newEthReserves, newUSDTReserves); 
+        return (txs[maxIndex], maxEth, maxUSDT); 
     }
 
     /**

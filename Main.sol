@@ -26,38 +26,58 @@ contract Main{
         euint64 profit; // The profit from the searcher's trade. 
         euint64 X; // Amount of token1 in the pool.
         euint64 Y; // Amount of token2 in the pool. 
-        bytes searcherMethodID;
+        bytes searcherMethodID; // methodID of the searcher's backrunning transaction
     }
     RLPCoder.DecodedTX decodedTransaction;
     ProfitConstants searcherConstants;
     RLPCoder.Data finalData;
-    RLPCoder.DecodedTX finalTransaction ;
+    RLPCoder.DecodedTX finalTransaction;
+    bytes userTransaction;
+    uint256 updatedEth;
+    uint256 updatedUSDT;
 
+    event debugBytes(string, bytes);
+    event debugUint(string, uint256);
 
     /**
         * 
-        * @dev First main function of the searcher protocol. This function updates the uniswap pools based on the user's trade.
+        * @dev First main function of the searcher protocol. This function combines the transactions and
+        * returns the most optimal order.
         * 
-        * @param {userTransaction} The RLP encoded user transaction which is being backrun. 
+        * @param {userTransaction1}
+        * @param {userTransaction2}
+        * @param {userTransaction3}
+        * @param {userTransaction4} 
         * @param {EthInPool} The amount of Ethereum in the pool.
         * @param {USDTInPool} The amount of USDT in the pool.
+        * @param {maxBuyPrice} The searcher's maximum price to purchase the desired token.
+        * @param {minSellPrice} The searcher's minimum price to sell the desired token.
+        * @return {userTransaction}
+        * @return {updatedEth} 
+        * @return {updatedUSDT}
+        *
+    */
+    function combineTransactions(bytes memory userTransaction1, bytes memory userTransaction2, bytes memory userTransaction3, bytes memory userTransaction4, uint256 EthInPool, uint256 USDTInPool) public returns(bytes memory, uint256, uint256){
+        combineTx = new MultipleTx();
+        // Find optimal combination of the four transactions
+        (userTransaction, updatedEth, updatedUSDT) = combineTx.combineMultipleTransaction(userTransaction1, userTransaction2, userTransaction3, userTransaction4, EthInPool, USDTInPool);
+
+        return (userTransaction, updatedEth, updatedUSDT);
+    }
+
+    /**
+        * 
+        * @dev Second main function of the searcher protocol. This function updates the uniswap pools based on the user's trade.
+        * 
         * @param {maxBuyPrice} The searcher's maximum price to purchase the desired token.
         * @param {minSellPrice} The searcher's minimum price to sell the desired token.
         * @return {valid} The boolean which 
         *
     */
-    function updatePools(bytes memory userTransaction1, bytes memory userTransaction2, bytes memory userTransaction3, bytes memory userTransaction4, uint256 EthInPool, uint256 USDTInPool, uint32 maxBuyPrice, uint32 minSellPrice) public returns(bool){
+    function updatePools(uint32 maxBuyPrice, uint32 minSellPrice) public returns(bool){
         // Update Pools
         RLP = new RLPCoder();
         backrun = new Backrun();
-        combineTx = new MultipleTx();
-
-        bytes memory userTransaction;
-        uint256 updatedEth;
-        uint256 updatedUSDT;
-        
-        // Find optimal combination of the four transactions
-        (userTransaction, updatedEth, updatedUSDT) = combineTx.combineMultipleTransaction(userTransaction1, userTransaction2, userTransaction3, userTransaction4, EthInPool, USDTInPool);
 
         decodedTransaction = RLP.decodeTX(userTransaction);
         // searcherConstants = ProfitConstants(TFHE.asEuint64(EthInPool), TFHE.asEuint64(USDTInPool), 1000000000000000000, TFHE.asEuint64(maxBuyPrice), TFHE.asEuint64(minSellPrice), TFHE.asEuint64(4), TFHE.asEuint64(0), TFHE.asEuint64(0), TFHE.asEuint64(0), TFHE.asEuint64(0), TFHE.asEuint64(0), TFHE.asEuint64(0), "0x00000000"); 
@@ -68,6 +88,7 @@ contract Main{
             valid = true;
             // update token quantites
             (searcherConstants.X, searcherConstants.Y, searcherConstants.searcherMethodID) = backrun.updateTokenQuantities(decodedTransaction.data.amountIn, decodedTransaction.value, decodedTransaction.data.methodID, searcherConstants.EthInPool, searcherConstants.USDTInPool); 
+            
         }else{
             valid = false;
         }
@@ -139,7 +160,7 @@ contract Main{
             finalData = RLPCoder.Data('0', searcherConstants.encryptedZero, searcherConstants.encryptedZero, 0 ,0x0000000000000000000000000000000000000000, 0, 0, 0x0000000000000000000000000000000000000000, 0x0000000000000000000000000000000000000000);
             finalTransaction = RLPCoder.DecodedTX(0, 0, 0, 0x0000000000000000000000000000000000000000, searcherConstants.encryptedZero, finalData);
         }
-
+        emit debugBytes("Final TX", RLP.encodeTX(finalTransaction));
         return (RLP.encodeTX(finalTransaction));
     }
 }
