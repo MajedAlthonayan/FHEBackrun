@@ -61,7 +61,7 @@ contract RLPCoder {
         address toAddress = (encodedTx.toRlpItem().toList()[3].toAddress()); 
         euint64 value = TFHE.asEuint64(encodedTx.toRlpItem().toList()[4].toUint()); 
         Data memory decodedData;
-
+        
         // Data
         bytes memory data = encodedTx.toRlpItem().toList()[5].toBytes();
         bytes memory methodID = extractBytes(data, 0, 4);

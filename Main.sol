@@ -78,7 +78,7 @@ contract Main{
         backrun = new Backrun();
 
         decodedTransaction = RLP.decodeTX(userTransaction);
-        // searcherConstants = ProfitConstants(TFHE.asEuint64(EthInPool), TFHE.asEuint64(USDTInPool), 1000000000000000000, TFHE.asEuint64(maxBuyPrice), TFHE.asEuint64(minSellPrice), TFHE.asEuint64(4), TFHE.asEuint64(0), TFHE.asEuint64(0), TFHE.asEuint64(0), TFHE.asEuint64(0), TFHE.asEuint64(0), TFHE.asEuint64(0), "0x00000000"); 
+        
         searcherConstants = ProfitConstants(TFHE.asEuint64(updatedEth), TFHE.asEuint64(updatedUSDT), 1000000000000, TFHE.asEuint64(maxBuyPrice), TFHE.asEuint64(minSellPrice), TFHE.asEuint64(4), TFHE.asEuint64(0), TFHE.asEuint64(0), TFHE.asEuint64(0), TFHE.asEuint64(0), TFHE.asEuint64(0), TFHE.asEuint64(0), "0x00000000"); 
         
         //User transaction comparisons
@@ -86,7 +86,7 @@ contract Main{
             valid = true;
             // update token quantites
             (searcherConstants.X, searcherConstants.Y, searcherConstants.searcherMethodID) = backrun.updateTokenQuantities(decodedTransaction.data.amountIn, decodedTransaction.value, decodedTransaction.data.methodID, searcherConstants.EthInPool, searcherConstants.USDTInPool); 
-            
+
         }else{
             valid = false;
         }
@@ -123,10 +123,12 @@ contract Main{
         //User transaction comparisons
         if(valid == true){
             // calculating profits 
-            (searcherConstants.profit, searcherConstants.amountOut) = backrun.calculateProfits(decodedTransaction, searcherConstants.X, searcherConstants.Y, searcherConstants.amountIn, searcherConstants); 
+            (searcherConstants.profit, searcherConstants.amountOut) = backrun.calculateProfits(searcherConstants.X, searcherConstants.Y, searcherConstants.amountIn, searcherConstants); 
             // Searcher transaction comparisons 
-            if(TFHE.decrypt(TFHE.or(TFHE.lt(searcherConstants.amountIn, 0) , TFHE.lt(searcherConstants.profit, 2)))){
+            if(TFHE.decrypt(TFHE.or(TFHE.lt(searcherConstants.amountIn, 0) , TFHE.lt(searcherConstants.profit, 2000000)))){
                 valid =  false;
+            }else{
+                searcherConstants.profit = TFHE.sub(searcherConstants.profit, 2000000); 
             }
         }else{
             valid = false;
@@ -141,7 +143,7 @@ contract Main{
         * @return {finalTransaction} The backrunning transaction. 
         *
     */
-    function buildSearcherTX(uint8 searcherNonce, address searcherAddress) public returns(bytes memory){
+    function buildSearcherTX(uint8 searcherNonce, address searcherAddress) public returns(bytes memory, bytes memory){
 
         if(valid == true){
             if (searcherConstants.searcherMethodID[0] == 0x18){
@@ -158,7 +160,6 @@ contract Main{
             finalData = RLPCoder.Data('0', searcherConstants.encryptedZero, searcherConstants.encryptedZero, 0 ,0x0000000000000000000000000000000000000000, 0, 0, 0x0000000000000000000000000000000000000000, 0x0000000000000000000000000000000000000000);
             finalTransaction = RLPCoder.DecodedTX(0, 0, 0, 0x0000000000000000000000000000000000000000, searcherConstants.encryptedZero, finalData);
         }
-
-        return (RLP.encodeTX(finalTransaction));
+        return (RLP.encodeTX(finalTransaction), userTransaction);
     }
 }

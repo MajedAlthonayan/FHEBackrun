@@ -141,21 +141,21 @@ contract MultipleTx {
     */
     function getAmountIn(bytes memory encodedTx) internal pure returns(euint64, bytes memory){ 
 
-        euint64 xamountIn;
+        euint64 txAmountIn;
         bytes memory data = encodedTx.toRlpItem().toList()[5].toBytes();
         bytes memory xmethodID = extractBytes(data, 0, 4);
 
         if(uint8(xmethodID[0]) == 0x18){ 
             // Tokens For Eth
-            xamountIn = TFHE.asEuint64(abi.decode(extractBytes(data, 4, 32), (uint64)));
+            txAmountIn = TFHE.asEuint64(abi.decode(extractBytes(data, 4, 32), (uint64)));
         }else if(uint8(xmethodID[0]) == 0x7f){
             // Eth For Tokens
-            xamountIn = TFHE.asEuint64(encodedTx.toRlpItem().toList()[4].toUint()); 
+            txAmountIn = TFHE.asEuint64(encodedTx.toRlpItem().toList()[4].toUint()); 
         } else{
             revert("Invalid Function");
         }
         
-        return (xamountIn, xmethodID);
+        return (txAmountIn, xmethodID);
     }
 
     /**
