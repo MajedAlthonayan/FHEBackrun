@@ -105,11 +105,11 @@ contract RLPCoder {
         if(transaction.data.methodID[0] == 0x18){
             // tokens for Eth 
             TxArray[4] = uint(0).encodeUint();
-            dataArray[1] = abi.encode(uint(TFHE.decrypt(transaction.data.amountIn)));
+            dataArray[1] = abi.encode(uint(TFHE.decrypt(transaction.data.amountIn))); // can also be kept encrypted to keep final transaction private.
             i = 2;
         }else{
             // Eth for tokens 
-            TxArray[4] = uint(TFHE.decrypt(transaction.value)).encodeUint();
+            TxArray[4] = uint(TFHE.decrypt(transaction.value)).encodeUint(); // currently being decrypted for testing purposes.
         }
 
         dataArray[i] = abi.encode(uint(TFHE.decrypt(transaction.data.amountOutMin)));
