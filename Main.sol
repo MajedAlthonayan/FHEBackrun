@@ -69,7 +69,7 @@ contract Main{
         * 
         * @param {maxBuyPrice} The searcher's maximum price to purchase the desired token.
         * @param {minSellPrice} The searcher's minimum price to sell the desired token.
-        * @return {valid} The boolean which 
+        * @return {valid} The boolean compliance flag. 
         *
     */
     function updatePools(uint32 maxBuyPrice, uint32 minSellPrice) public returns(bool){
@@ -78,10 +78,9 @@ contract Main{
         backrun = new Backrun();
 
         decodedTransaction = RLP.decodeTX(userTransaction);
-        
         searcherConstants = ProfitConstants(TFHE.asEuint64(updatedEth), TFHE.asEuint64(updatedUSDT), 1000000000000, TFHE.asEuint64(maxBuyPrice), TFHE.asEuint64(minSellPrice), TFHE.asEuint64(4), TFHE.asEuint64(0), TFHE.asEuint64(0), TFHE.asEuint64(0), TFHE.asEuint64(0), TFHE.asEuint64(0), TFHE.asEuint64(0), "0x00000000"); 
         
-        //User transaction comparisons
+        //User transaction comparisons / validity checks
         if(decodedTransaction.to == 0x7a250d5630B4cF539739dF2C5dAcb4c659F2488D && decodedTransaction.data.deadline >= 1669870000 && decodedTransaction.data.addressLength == 2){
             valid = true;
             // update token quantites
@@ -97,7 +96,7 @@ contract Main{
         * 
         * @dev Second function of the main protocol which performs the calculation that calculates the amount to trade in. 
         * 
-        * @return {valid} The boolean which 
+        * @return {valid} The boolean compliance flag. 
         *
     */
     function amountInCalc() public returns(bool){
@@ -105,7 +104,6 @@ contract Main{
         if(valid == true){
             // calculating amount in 
             searcherConstants.amountIn = backrun.amountCalculation(searcherConstants, searcherConstants.X, searcherConstants.Y); 
-
         }else{
             valid = false;
         }
@@ -116,7 +114,7 @@ contract Main{
         * 
         * @dev Third function of the main protocol which calculates the profit based on the previously calculated amount. 
         * 
-        * @return {valid} The boolean which 
+        * @return {valid} The boolean compliance flag. 
         *
     */
     function profitCalc() public returns(bool){
@@ -141,6 +139,7 @@ contract Main{
         * @dev Last function of the main protocol which builds the backrunning transaction.
         * 
         * @return {finalTransaction} The backrunning transaction. 
+        * @return {userTransaction} The target transaciton.
         *
     */
     function buildSearcherTX(uint8 searcherNonce, address searcherAddress) public returns(bytes memory, bytes memory){
@@ -156,7 +155,7 @@ contract Main{
                 finalTransaction = RLPCoder.DecodedTX(searcherNonce, decodedTransaction.gasPrice, decodedTransaction.gasLimit, decodedTransaction.to, TFHE.mul(searcherConstants.amountIn, 1000000000000), finalData);
             }
         }else{
-            // Return 0 transaction
+            // Return Empty transaction
             finalData = RLPCoder.Data('0', searcherConstants.encryptedZero, searcherConstants.encryptedZero, 0 ,0x0000000000000000000000000000000000000000, 0, 0, 0x0000000000000000000000000000000000000000, 0x0000000000000000000000000000000000000000);
             finalTransaction = RLPCoder.DecodedTX(0, 0, 0, 0x0000000000000000000000000000000000000000, searcherConstants.encryptedZero, finalData);
         }
