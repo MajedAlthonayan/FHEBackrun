@@ -123,7 +123,7 @@ contract Main{
             // calculating profits 
             (searcherConstants.profit, searcherConstants.amountOut) = backrun.calculateProfits(searcherConstants.X, searcherConstants.Y, searcherConstants.amountIn, searcherConstants); 
             // Searcher transaction comparisons 
-            if(TFHE.decrypt(TFHE.or(TFHE.and(TFHE.lt(searcherConstants.amountIn, 0), TFHE.gt(searcherConstants.amountIn, searcherConstants.X)) , TFHE.lt(searcherConstants.profit, 2000000)))){
+            if(TFHE.decrypt(TFHE.or(TFHE.or(TFHE.lt(searcherConstants.amountIn, 0), TFHE.gt(searcherConstants.amountIn, searcherConstants.X)) , TFHE.lt(searcherConstants.profit, 2000000)))){
                 valid =  false;
             }else{
                 searcherConstants.profit = TFHE.sub(searcherConstants.profit, 2000000); 
