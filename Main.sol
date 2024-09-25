@@ -126,7 +126,7 @@ contract Main{
             if(TFHE.decrypt(TFHE.or(TFHE.or(TFHE.lt(searcherConstants.amountIn, 0), TFHE.gt(searcherConstants.amountIn, searcherConstants.X)) , TFHE.lt(searcherConstants.profit, 2000000)))){
                 valid =  false;
             }else{
-                searcherConstants.profit = TFHE.sub(searcherConstants.profit, 2000000); 
+                searcherConstants.profit = TFHE.sub(searcherConstants.profit, 2000000); //cost of arbitrage
             }
         }else{
             valid = false;
@@ -155,6 +155,7 @@ contract Main{
                 finalTransaction = RLPCoder.DecodedTX(searcherNonce, decodedTransaction.gasPrice, decodedTransaction.gasLimit, decodedTransaction.to, TFHE.mul(searcherConstants.amountIn, 1000000000000), finalData);
             }
         }else{
+            // if not valid
             // Return Empty transaction
             finalData = RLPCoder.Data('0', searcherConstants.encryptedZero, searcherConstants.encryptedZero, 0 ,0x0000000000000000000000000000000000000000, 0, 0, 0x0000000000000000000000000000000000000000, 0x0000000000000000000000000000000000000000);
             finalTransaction = RLPCoder.DecodedTX(0, 0, 0, 0x0000000000000000000000000000000000000000, searcherConstants.encryptedZero, finalData);
